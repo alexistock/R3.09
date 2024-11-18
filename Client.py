@@ -1,4 +1,11 @@
 import socket
+
+"""
+Generer par sphynx une documentation  
+"""
+
+
+
 class Client:
     def __init__(self, ip='127.0.0.1', port=1028):
         self.client_socket = socket.socket()
@@ -31,4 +38,6 @@ if __name__ == "__main__":
     client.connect()
     client.message_recu()
     client.p()
+    
+
     
