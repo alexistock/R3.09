@@ -1,27 +1,31 @@
 import socket
+import threading
 
-
-class Serveur:
-    def __init__(self, port):
-        self.__port = port
-        self.current_client = None
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind(("0.0.0.0", port))
-        self.server_socket.listen(5)  
+class serveur:
+    def __init__(self,nbr_serveur,lst_port= []):
+        self.lst_port = lst_port
+        self.nbr_serveur = nbr_serveur
+        self.liste_serveur = []
+        self.thread_list = []
         self.etat = 'run'
-    
-    @property
-    def port(self):
-        return self.__port
-    
-    @port.setter
-    def port(self, nouveau_port):
-        self.__port = nouveau_port
+        for i in self.lst_port:
 
-    def detection(self):
+            tmp_socket = socket.socket()
+            tmp_socket.bind(("0.0.0.0",i))
+            tmp_socket.listen(1) 
+            self.liste_serveur.append(tmp_socket)
+
+    def lancement_tout_les_serveurs(self):
+        for serv in self.liste_serveur:
+            t = threading.Thread(target=self.start_un_serveur, args=[serv])
+            t.start()
+            self.thread_list.append(t)
+
+    def start_un_serveur(self, serv):
         while self.etat == 'run':
             try:
-                conn, address = self.server_socket.accept()
+                print(1)
+                conn, address = serv.accept()
                 """client_thread = threading.Thread(target=self.commandeclient, args=(conn, address))
                 client_thread.start()
                 """
@@ -34,9 +38,8 @@ class Serveur:
                 print("Erreur lors de l'acceptation de la connexion :", e)
                 break  
 
-if __name__ == "__main__":
-    port = int(input('Entrer le numéro de port du serveur '))    
-    serveur = Serveur(port)
-    print(f"Serveur en écoute sur le port {port}")
-    serveur.detection()
-    
+
+            
+
+
+        
