@@ -35,16 +35,32 @@ class Client(threading.Thread):
         self.timer_running = False  # Indicateur pour savoir si le timer est actif
         self.timer_thread = None  # Thread dédié à l'actualisation du timer
 
+
     def run(self):
         """
         Méthode principale exécutée lors du démarrage du thread.
         """
         try:
+            self.update_callback(f"Tentative de connexion au serveur")
+            print(self.host)
             self.liste_serveur()  # Chargement de la liste des serveurs
+            print(self.liste_des_serveur)
             if self.host in self.liste_des_serveur:  # Vérifie si l'IP est dans la liste des serveurs
                 port = int(self.liste_des_serveur[self.liste_des_serveur.index(self.host) + 1])  # Récupération du port associé
                 self.socket = socket.socket()  # Création du socket client
-                self.socket.connect((self.host, port))  # Connexion au serveur
+                
+                try:
+                    self.socket.connect((self.host, port))  # Connexion au serveur
+                except ConnectionRefusedError as e:  # Gestion spécifique de l'erreur de connexion refusée
+                    self.update_callback("Le serveur a refusé la connexion ou n'est pas accesible . Voici d'autres IP disponibles :")
+                    
+                    # Affichage des autres IP disponibles
+                    for i in range(0, len(self.liste_des_serveur), 2):
+                        ip, port = self.liste_des_serveur[i], self.liste_des_serveur[i + 1]
+                        if ip != self.host:  # Exclure l'IP actuelle
+                            self.update_callback(f"- IP : {ip}, Port : {port}")
+                    return  # Arrête l'exécution après avoir listé les autres IP
+                
                 self.start_timer()  # Démarrage du timer
                 self.envoyer_programme(self.chemin_fichier, self.extension)  # Envoi du fichier au serveur
             else:
@@ -56,6 +72,7 @@ class Client(threading.Thread):
                 self.socket.close()  # Fermeture du socket
             self.stop_timer()  # Arrêt du timer
 
+
     def envoyer_programme(self, fichier: str, extension_fichier: str):
         """
         Envoie le fichier spécifié au serveur, ligne par ligne.
@@ -66,28 +83,47 @@ class Client(threading.Thread):
         :type extension_fichier: str
         """
         try:
+            # Réception du message initial du serveur
+            message_initial = self.socket.recv(1024).decode()
+            self.update_callback(message_initial)
+
+            # Vérification de l'erreur "Essayez plus tard"
+            if "Erreur : Essayez plus tard" in message_initial:
+                self.update_callback("Le serveur est occupé. Voici d'autres IP disponibles :")
+                
+                # Affichage des autres IP disponibles
+                for i in range(0, len(self.liste_des_serveur), 2):
+                    ip, port = self.liste_des_serveur[i], self.liste_des_serveur[i + 1]
+                    if ip != self.host:  # Exclure l'IP actuelle
+                        self.update_callback(f"- IP : {ip}, Port : {port}")
+                return  # Arrête l'envoi après avoir listé les autres IP
+
+            # Lecture du fichier local
             with open(fichier, 'r') as programme:
-                lignes = programme.readlines()  # Lecture des lignes du fichier
+                lignes = programme.readlines()
 
-            self.socket.send((extension_fichier + "\n").encode())  # Envoi de l'extension
-            reponse = self.socket.recv(1024).decode()  # Réception de la réponse du serveur
-
+            # Envoi des données au serveur
+            self.socket.send((extension_fichier + "\n").encode())
+            reponse = self.socket.recv(1024).decode()
             if "Erreur" in reponse:
                 self.update_callback(reponse)
                 return
 
-            self.socket.send((str(len(lignes)) + "\n").encode())  # Envoi du nombre de lignes
-            self.socket.recv(1024)  # Confirmation du serveur
+            self.socket.send((str(len(lignes)) + "\n").encode())
+            self.socket.recv(1024)  # Confirmation
 
             for ligne in lignes:
-                self.socket.send(ligne.encode())  # Envoi de chaque ligne
-                self.socket.recv(1024)  # Confirmation pour chaque ligne
+                self.socket.send(ligne.encode())
+                self.socket.recv(1024)
 
-            resultat = self.socket.recv(1024).decode()  # Réception du résultat final
+            # Réception du résultat final
+            resultat = self.socket.recv(1024).decode()
             self.update_callback(f"Résultat reçu : {resultat}")
-            self.socket.send("message recu".encode())  # Confirmation finale
+            self.socket.send("message recu".encode())
         except Exception as erreur:
             self.update_callback(f"Erreur lors de l'envoi : {str(erreur)}")
+
+
 
     def liste_serveur(self):
         """
@@ -173,8 +209,7 @@ class MainWindow(QMainWindow):
         self.selection_fichier_btn.clicked.connect(self.selection_fichier)
         self.bouton_upload.clicked.connect(self.lancement_upload)
 
-        # Verrou pour synchroniser l'accès aux threads
-        self.lock = threading.Lock()
+
 
     def selection_fichier(self):
         """
@@ -195,7 +230,6 @@ class MainWindow(QMainWindow):
             self.selection_fichier_erreur.setText("Aucun fichier sélectionné")
             return
 
-        self.append_result("Démarrage du client...")
         client_thread = Client(ip, self.chemin_fichier, self.extension.currentText(), self.append_result, self.update_timer)
         client_thread.start()
 
@@ -206,8 +240,7 @@ class MainWindow(QMainWindow):
         :param message: Message à afficher
         :type message: str
         """
-        with self.lock:
-            self.resultat_programme.append(message)
+        self.resultat_programme.append(message)
 
     def update_timer(self, temp_excution: int):
         """
