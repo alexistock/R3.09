@@ -1,0 +1,7 @@
+Serveur
+=======
+
+.. autofunction:: serveur.Serveur.__init__
+.. autofunction:: serveur.Serveur.executer_programme
+.. autofunction:: serveur.Serveur.gerer_client
+.. autofunction:: serveur.Serveur.demarrer
