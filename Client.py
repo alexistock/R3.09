@@ -42,24 +42,23 @@ class Client(threading.Thread):
         """
         try:
             self.update_callback(f"Tentative de connexion au serveur")
-            print(self.host)
             self.liste_serveur()  # Chargement de la liste des serveurs
-            print(self.liste_des_serveur)
-            if self.host in self.liste_des_serveur:  # Vérifie si l'IP est dans la liste des serveurs
-                port = int(self.liste_des_serveur[self.liste_des_serveur.index(self.host) + 1])  # Récupération du port associé
-                self.socket = socket.socket()  # Création du socket client
+            if self.host in self.liste_des_serveur:  
+                port = int(self.liste_des_serveur[self.liste_des_serveur.index(self.host) + 1])
+                self.socket = socket.socket()
                 
                 try:
-                    self.socket.connect((self.host, port))  # Connexion au serveur
-                except ConnectionRefusedError as e:  # Gestion spécifique de l'erreur de connexion refusée
-                    self.update_callback("Le serveur a refusé la connexion ou n'est pas accesible . Voici d'autres IP disponibles :")
+                    self.socket.connect((self.host, port))  
+                except ConnectionRefusedError as e:  
+                    self.update_callback("Le serveur a refusé la connexion ou n'est pas accessible. Voici d'autres IP disponibles :")
                     
-                    # Affichage des autres IP disponibles
+                    # Affichage des autres IP disponibles dans l'interface graphique
                     for i in range(0, len(self.liste_des_serveur), 2):
                         ip, port = self.liste_des_serveur[i], self.liste_des_serveur[i + 1]
-                        if ip != self.host:  # Exclure l'IP actuelle
+                        if ip != self.host:  
                             self.update_callback(f"- IP : {ip}, Port : {port}")
-                    return  # Arrête l'exécution après avoir listé les autres IP
+                    return  
+
                 
                 self.start_timer()  # Démarrage du timer
                 self.envoyer_programme(self.chemin_fichier, self.extension)  # Envoi du fichier au serveur
@@ -88,15 +87,16 @@ class Client(threading.Thread):
             self.update_callback(message_initial)
 
             # Vérification de l'erreur "Essayez plus tard"
-            if "Erreur : Essayez plus tard" in message_initial:
+            if "Erreur : Serveur occupé, réessayez plus tard." in message_initial:
                 self.update_callback("Le serveur est occupé. Voici d'autres IP disponibles :")
                 
-                # Affichage des autres IP disponibles
+                # Affichage des autres IP disponibles dans l'interface graphique
                 for i in range(0, len(self.liste_des_serveur), 2):
                     ip, port = self.liste_des_serveur[i], self.liste_des_serveur[i + 1]
-                    if ip != self.host:  # Exclure l'IP actuelle
+                    if ip != self.host:  
                         self.update_callback(f"- IP : {ip}, Port : {port}")
-                return  # Arrête l'envoi après avoir listé les autres IP
+                return  
+
 
             # Lecture du fichier local
             with open(fichier, 'r') as programme:
